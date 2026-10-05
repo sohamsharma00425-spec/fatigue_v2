@@ -35,7 +35,9 @@ def test_save_and_load_round_trip(tmp_path):
 
     loaded = PersonalProfile.load(path)
     assert loaded.pilot_id == "p1"
-    assert loaded.baselines["ear"].median == pytest.approx(profile.baselines["ear"].median)
+    assert loaded.baselines["ear"].median == pytest.approx(
+        profile.baselines["ear"].median
+    )
 
 
 def test_sparse_feature_falls_back_without_raising():

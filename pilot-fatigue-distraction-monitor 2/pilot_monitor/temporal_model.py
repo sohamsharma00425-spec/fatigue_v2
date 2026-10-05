@@ -51,7 +51,10 @@ def zscores_to_vector(zscores):
     should not, by itself, look anomalous.
     """
     return np.array(
-        [zscores.get(name) if zscores.get(name) is not None else 0.0 for name in FEATURE_ORDER],
+        [
+            zscores.get(name) if zscores.get(name) is not None else 0.0
+            for name in FEATURE_ORDER
+        ],
         dtype=np.float32,
     )
 

@@ -11,6 +11,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 
+from pilot_monitor.alerts import AlertStateMachine
 from pilot_monitor.calibration import FEATURE_NAMES
 from pilot_monitor.events import EventEngine, WindowedEventStats
 from pilot_monitor.eye_detector import EyeDetector
@@ -19,7 +20,6 @@ from pilot_monitor.normalization import normalize
 from pilot_monitor.pose_estimation import HeadPoseEstimator
 from pilot_monitor.quality import ObservationQualityAssessor, Quality
 from pilot_monitor.risk import RiskScorer
-from pilot_monitor.alerts import AlertStateMachine
 from pilot_monitor.utils import get_landmarks
 
 
@@ -37,7 +37,13 @@ class FrameFeatures:
     face_detected: bool = False
 
 
-def make_detector(model_path, min_detection_confidence=0.5, min_face_presence_confidence=0.5, min_tracking_confidence=0.5, max_faces=1):
+def make_detector(
+    model_path,
+    min_detection_confidence=0.5,
+    min_face_presence_confidence=0.5,
+    min_tracking_confidence=0.5,
+    max_faces=1,
+):
     """Build a MediaPipe FaceLandmarker in VIDEO mode (shared by every entry point)."""
     options = mp.tasks.vision.FaceLandmarkerOptions(
         base_options=mp.tasks.BaseOptions(model_asset_path=str(model_path)),
@@ -68,19 +74,28 @@ class FeatureExtractor:
         if not mp_result.face_landmarks:
             quality_result = self.quality_assessor.assess(None, None, None, None)
             return (
-                FrameFeatures(quality=quality_result.quality, quality_reasons=quality_result.reasons),
+                FrameFeatures(
+                    quality=quality_result.quality,
+                    quality_reasons=quality_result.reasons,
+                ),
                 frame,
             )
 
-        landmarks, raw_landmarks = get_landmarks(mp_result.face_landmarks, return_raw=True)
+        landmarks, raw_landmarks = get_landmarks(
+            mp_result.face_landmarks, return_raw=True
+        )
         ear = self.eye_detector.get_EAR(landmarks, frame_size)
         gaze_dx, gaze_dy = self.eye_detector.get_gaze_vector(landmarks, frame_size)
         mar = self.mouth_detector.get_MAR(landmarks, frame_size)
-        posed_frame, roll, pitch, yaw = self.head_pose.get_pose(frame, landmarks, frame_size)
+        posed_frame, roll, pitch, yaw = self.head_pose.get_pose(
+            frame, landmarks, frame_size
+        )
         if posed_frame is not None:
             frame = posed_frame
 
-        quality_result = self.quality_assessor.assess(raw_landmarks[:, :2], roll, pitch, yaw)
+        quality_result = self.quality_assessor.assess(
+            raw_landmarks[:, :2], roll, pitch, yaw
+        )
 
         features = FrameFeatures(
             quality=quality_result.quality,
@@ -106,7 +121,14 @@ class MonitoringPipeline:
     (there is no profile to normalize against yet).
     """
 
-    def __init__(self, profile, gru_bundle=None, window_s=20.0, event_kwargs=None, alert_kwargs=None):
+    def __init__(
+        self,
+        profile,
+        gru_bundle=None,
+        window_s=20.0,
+        event_kwargs=None,
+        alert_kwargs=None,
+    ):
         self.profile = profile
         self.gru_bundle = gru_bundle  # (TrainedTemporalModel, GRUAutoencoder) or None
         self.feature_extractor = FeatureExtractor()
@@ -151,7 +173,15 @@ class MonitoringPipeline:
             t_now, risk_result, is_invalid
         )
 
-        return frame, features, normalized, risk_result, fatigue_update, distraction_update, gru_anomaly
+        return (
+            frame,
+            features,
+            normalized,
+            risk_result,
+            fatigue_update,
+            distraction_update,
+            gru_anomaly,
+        )
 
 
 def frame_timestamp_ms(previous_timestamp_ms, elapsed_since_stream_start_s):

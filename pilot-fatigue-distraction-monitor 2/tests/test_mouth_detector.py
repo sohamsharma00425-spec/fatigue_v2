@@ -17,8 +17,14 @@ def make_mouth_landmarks(frame_size, mouth_height=10, mouth_width=80):
         center_y / frame_size[1],
     )
     for top_idx, bottom_idx in detector.VERTICAL_PAIRS:
-        landmarks[top_idx, :2] = (center_x / frame_size[0], (center_y - mouth_height / 2) / frame_size[1])
-        landmarks[bottom_idx, :2] = (center_x / frame_size[0], (center_y + mouth_height / 2) / frame_size[1])
+        landmarks[top_idx, :2] = (
+            center_x / frame_size[0],
+            (center_y - mouth_height / 2) / frame_size[1],
+        )
+        landmarks[bottom_idx, :2] = (
+            center_x / frame_size[0],
+            (center_y + mouth_height / 2) / frame_size[1],
+        )
     return landmarks
 
 
@@ -28,7 +34,9 @@ def test_mar_increases_when_mouth_opens():
     closed = make_mouth_landmarks(frame_size, mouth_height=5)
     open_mouth = make_mouth_landmarks(frame_size, mouth_height=40)
 
-    assert detector.get_MAR(open_mouth, frame_size) > detector.get_MAR(closed, frame_size)
+    assert detector.get_MAR(open_mouth, frame_size) > detector.get_MAR(
+        closed, frame_size
+    )
 
 
 def test_mar_invariant_to_frame_size():

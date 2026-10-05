@@ -91,7 +91,9 @@ class RiskScorer:
 
         blink = window_stats.get(EventType.BLINK)
         if blink and blink["mean_duration"] > self.typical_blink_duration:
-            excess = (blink["mean_duration"] - self.typical_blink_duration) / self.typical_blink_duration
+            excess = (
+                blink["mean_duration"] - self.typical_blink_duration
+            ) / self.typical_blink_duration
             fatigue_terms.append(
                 (
                     self.blink_duration_weight * min(excess, 1.0),
@@ -172,7 +174,9 @@ class RiskScorer:
             reason for term, reason in fatigue_terms if term >= self.reason_threshold
         ]
         distraction_reasons = [
-            reason for term, reason in distraction_terms if term >= self.reason_threshold
+            reason
+            for term, reason in distraction_terms
+            if term >= self.reason_threshold
         ]
 
         return RiskResult(

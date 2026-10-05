@@ -147,7 +147,11 @@ def collect_calibration_samples(video_source, model_path, duration_s, max_faces=
 
     import cv2
 
-    from pilot_monitor.pipeline import FeatureExtractor, frame_timestamp_ms, make_detector
+    from pilot_monitor.pipeline import (
+        FeatureExtractor,
+        frame_timestamp_ms,
+        make_detector,
+    )
     from pilot_monitor.quality import Quality
 
     feature_samples = {name: [] for name in FEATURE_NAMES}
@@ -214,15 +218,21 @@ def main(argv=None):
 
     from pilot_monitor.normalization import normalize
 
-    parser = argparse.ArgumentParser(description="Calibrate a pilot's personal baseline")
+    parser = argparse.ArgumentParser(
+        description="Calibrate a pilot's personal baseline"
+    )
     parser.add_argument("--pilot-id", required=True)
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument("--video", type=Path, default=None)
     parser.add_argument("--duration", type=float, default=90.0)
     parser.add_argument("--profiles-dir", type=Path, default=Path("profiles"))
-    parser.add_argument("--model-path", type=Path, default=Path("models/face_landmarker.task"))
+    parser.add_argument(
+        "--model-path", type=Path, default=Path("models/face_landmarker.task")
+    )
     parser.add_argument("--window-len", type=int, default=30)
-    parser.add_argument("--no-gru", dest="train_gru", action="store_false", default=True)
+    parser.add_argument(
+        "--no-gru", dest="train_gru", action="store_false", default=True
+    )
     args = parser.parse_args(argv)
 
     if not args.model_path.is_file():
@@ -246,8 +256,10 @@ def main(argv=None):
     profile = PersonalProfile.fit(args.pilot_id, feature_samples, args.duration)
     profile_path = default_profile_path(args.profiles_dir, args.pilot_id)
     profile.save(profile_path)
-    print(f"Saved personal baseline for '{args.pilot_id}' to {profile_path} "
-          f"({frame_count} good-quality frames).")
+    print(
+        f"Saved personal baseline for '{args.pilot_id}' to {profile_path} "
+        f"({frame_count} good-quality frames)."
+    )
 
     if args.train_gru:
         try:
@@ -260,7 +272,9 @@ def main(argv=None):
             )
 
             if not TORCH_AVAILABLE:
-                print("PyTorch not installed: skipping GRU training (`uv sync` installs it).")
+                print(
+                    "PyTorch not installed: skipping GRU training (`uv sync` installs it)."
+                )
             else:
                 sequence = np.stack(
                     [
@@ -269,7 +283,10 @@ def main(argv=None):
                     ]
                 )
                 train_pilot_model(
-                    args.pilot_id, sequence, args.profiles_dir, window_len=args.window_len
+                    args.pilot_id,
+                    sequence,
+                    args.profiles_dir,
+                    window_len=args.window_len,
                 )
                 print(f"Trained GRU temporal model for '{args.pilot_id}'.")
         except Exception as error:

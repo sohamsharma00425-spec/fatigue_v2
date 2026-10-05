@@ -29,13 +29,13 @@ from pathlib import Path
 
 import numpy as np
 
+from evaluation.metrics import alert_flap_rate, compute_metrics
 from pilot_monitor.alerts import AlertState, AlertStateMachine
 from pilot_monitor.attention_scorer import AttentionScorer
 from pilot_monitor.calibration import PersonalProfile
 from pilot_monitor.events import EventEngine, WindowedEventStats
 from pilot_monitor.normalization import normalize
 from pilot_monitor.risk import RiskScorer
-from evaluation.metrics import alert_flap_rate, compute_metrics
 
 FPS = 15.0  # synthetic sampling rate (frames/sec) -- representative of a real camera pipeline
 
@@ -59,25 +59,42 @@ def _ar1_noise(rng, n, sigma, rho=0.85):
         noise[i] = rho * noise[i - 1] + rng.normal(0, innovation_std)
     return noise
 
+
 PILOTS = {
     "pilot_A_typical": dict(
-        seed=1, ear_baseline=0.30, blink_rate=15, gaze_std=0.06, head_std=3.0,
+        seed=1,
+        ear_baseline=0.30,
+        blink_rate=15,
+        gaze_std=0.06,
+        head_std=3.0,
         note="Typical baseline; control subject.",
     ),
     "pilot_B_narrow_eyes": dict(
-        seed=2, ear_baseline=0.17, blink_rate=14, gaze_std=0.06, head_std=3.0,
+        seed=2,
+        ear_baseline=0.17,
+        blink_rate=14,
+        gaze_std=0.06,
+        head_std=3.0,
         note="Naturally narrow eyes: normal EAR sits close to the universal "
         "closed-eye threshold (0.15), so a fixed-threshold system runs hot "
         "on this pilot even at rest.",
     ),
     "pilot_C_active_scanner": dict(
-        seed=3, ear_baseline=0.31, blink_rate=16, gaze_std=0.10, head_std=11.0,
+        seed=3,
+        ear_baseline=0.31,
+        blink_rate=16,
+        gaze_std=0.10,
+        head_std=11.0,
         note="Naturally large head movement (active instrument scanning): "
         "normal behaviour regularly exceeds the universal 20-degree pose "
         "threshold, so a fixed-threshold system over-fires DISTRACTED here.",
     ),
     "pilot_D_frequent_blinker": dict(
-        seed=4, ear_baseline=0.29, blink_rate=24, gaze_std=0.06, head_std=3.5,
+        seed=4,
+        ear_baseline=0.29,
+        blink_rate=24,
+        gaze_std=0.06,
+        head_std=3.5,
         note="Naturally frequent blinker; used to check that a higher "
         "personal-normal blink rate is not itself treated as fatigue.",
     ),
@@ -144,9 +161,15 @@ def simulate_pilot(cfg, duration_s=600.0, calibration_s=90.0):
 
     return {
         "t": t,
-        "ear": ear, "gaze_dx": gaze_dx, "gaze_dy": gaze_dy, "mar": mar,
-        "roll": roll, "pitch": pitch, "yaw": yaw,
-        "fatigue_gt": fatigue_gt, "distraction_gt": distraction_gt,
+        "ear": ear,
+        "gaze_dx": gaze_dx,
+        "gaze_dy": gaze_dy,
+        "mar": mar,
+        "roll": roll,
+        "pitch": pitch,
+        "yaw": yaw,
+        "fatigue_gt": fatigue_gt,
+        "distraction_gt": distraction_gt,
         "calibration_s": calibration_s,
     }
 
@@ -157,8 +180,12 @@ def run_model1_baseline(data):
     fatigue_pred, distraction_pred = [], []
     for i, t in enumerate(data["t"]):
         asleep, looking_away, distracted = scorer.eval_scores(
-            t, data["ear"][i], (data["gaze_dx"][i] ** 2 + data["gaze_dy"][i] ** 2) ** 0.5,
-            data["roll"][i], data["pitch"][i], data["yaw"][i],
+            t,
+            data["ear"][i],
+            (data["gaze_dx"][i] ** 2 + data["gaze_dy"][i] ** 2) ** 0.5,
+            data["roll"][i],
+            data["pitch"][i],
+            data["yaw"][i],
         )
         fatigue_pred.append(bool(asleep))
         distraction_pred.append(bool(looking_away or distracted))
@@ -179,8 +206,12 @@ def run_personalized(data, pilot_id, use_gru, model_dir):
     if use_gru:
         try:
             from pilot_monitor.temporal_model import (
-                TORCH_AVAILABLE, train_pilot_model, zscores_to_vector, load_pilot_model,
+                TORCH_AVAILABLE,
+                load_pilot_model,
+                train_pilot_model,
+                zscores_to_vector,
             )
+
             if TORCH_AVAILABLE:
                 calib_seq = np.stack(
                     [
@@ -193,7 +224,9 @@ def run_personalized(data, pilot_id, use_gru, model_dir):
                         for i in np.where(calib_mask)[0]
                     ]
                 )
-                train_pilot_model(pilot_id, calib_seq, model_dir, window_len=int(FPS * 8))
+                train_pilot_model(
+                    pilot_id, calib_seq, model_dir, window_len=int(FPS * 8)
+                )
                 gru_bundle = load_pilot_model(pilot_id, model_dir)
         except Exception as error:  # pragma: no cover - environment-dependent
             print(f"  [GRU skipped for {pilot_id}: {error}]")
@@ -208,7 +241,9 @@ def run_personalized(data, pilot_id, use_gru, model_dir):
     for i, t in enumerate(data["t"]):
         raw = {name: data[name][i] for name in feature_samples}
         normalized = normalize(profile, raw)
-        for event in event_engine.update(t, normalized.zscores, quality_is_invalid=False):
+        for event in event_engine.update(
+            t, normalized.zscores, quality_is_invalid=False
+        ):
             windowed_stats.add(event)
         stats = windowed_stats.compute(t, event_engine.active_snapshots(t))
 
@@ -223,14 +258,22 @@ def run_personalized(data, pilot_id, use_gru, model_dir):
                 gru_anomaly = meta.anomaly_zscore(model, window)
 
         risk = risk_scorer.score(stats, gru_anomaly)
-        fatigue_update, distraction_update = alert_sm.update(t, risk, quality_is_invalid=False)
+        fatigue_update, distraction_update = alert_sm.update(
+            t, risk, quality_is_invalid=False
+        )
         fatigue_states.append(fatigue_update.state)
         distraction_states.append(distraction_update.state)
 
     alerting = {AlertState.ELEVATED_RISK, AlertState.WARNING}
     fatigue_pred = np.array([s in alerting for s in fatigue_states])
     distraction_pred = np.array([s in alerting for s in distraction_states])
-    return fatigue_pred, distraction_pred, fatigue_states, distraction_states, gru_bundle is not None
+    return (
+        fatigue_pred,
+        distraction_pred,
+        fatigue_states,
+        distraction_states,
+        gru_bundle is not None,
+    )
 
 
 def main(argv=None):
@@ -250,7 +293,9 @@ def main(argv=None):
         eval_mask = data["t"] >= data["calibration_s"]
 
         m1_fat, m1_dist = run_model1_baseline(data)
-        m2_fat, m2_dist, *_ = run_personalized(data, pilot_id + "_stat", use_gru=False, model_dir=model_dir)
+        m2_fat, m2_dist, *_ = run_personalized(
+            data, pilot_id + "_stat", use_gru=False, model_dir=model_dir
+        )
         m3_fat, m3_dist, m3_fat_states, m3_dist_states, gru_ran = run_personalized(
             data, pilot_id, use_gru=args.use_gru, model_dir=model_dir
         )
@@ -261,16 +306,28 @@ def main(argv=None):
             "note": cfg["note"],
             "gru_ran": gru_ran,
             "model1_fixed_threshold": {
-                "fatigue": _metrics_dict(data["fatigue_gt"][eval_mask], m1_fat[eval_mask]),
-                "distraction": _metrics_dict(data["distraction_gt"][eval_mask], m1_dist[eval_mask]),
+                "fatigue": _metrics_dict(
+                    data["fatigue_gt"][eval_mask], m1_fat[eval_mask]
+                ),
+                "distraction": _metrics_dict(
+                    data["distraction_gt"][eval_mask], m1_dist[eval_mask]
+                ),
             },
             "model2_personal_statistics": {
-                "fatigue": _metrics_dict(data["fatigue_gt"][eval_mask], m2_fat[eval_mask]),
-                "distraction": _metrics_dict(data["distraction_gt"][eval_mask], m2_dist[eval_mask]),
+                "fatigue": _metrics_dict(
+                    data["fatigue_gt"][eval_mask], m2_fat[eval_mask]
+                ),
+                "distraction": _metrics_dict(
+                    data["distraction_gt"][eval_mask], m2_dist[eval_mask]
+                ),
             },
             "model3_personal_plus_gru": {
-                "fatigue": _metrics_dict(data["fatigue_gt"][eval_mask], m3_fat[eval_mask]),
-                "distraction": _metrics_dict(data["distraction_gt"][eval_mask], m3_dist[eval_mask]),
+                "fatigue": _metrics_dict(
+                    data["fatigue_gt"][eval_mask], m3_fat[eval_mask]
+                ),
+                "distraction": _metrics_dict(
+                    data["distraction_gt"][eval_mask], m3_dist[eval_mask]
+                ),
                 "fatigue_flap_rate_per_min": alert_flap_rate(
                     [s for s, keep in zip(m3_fat_states, eval_mask) if keep], minutes
                 ),
@@ -283,25 +340,39 @@ def main(argv=None):
     (args.output_dir / "comparison.json").write_text(json.dumps(all_results, indent=2))
     _write_plot(all_results, args.output_dir / "comparison.png")
     _write_report(all_results, any_gru_ran, args.output_dir / "REPORT.md")
-    print(f"\nWrote results to {args.output_dir}/ (comparison.json, comparison.png, REPORT.md)")
+    print(
+        f"\nWrote results to {args.output_dir}/ (comparison.json, comparison.png, REPORT.md)"
+    )
 
 
 def _metrics_dict(y_true, y_pred):
     m = compute_metrics(y_true, y_pred)
     return {
-        "precision": round(m.precision, 3), "recall": round(m.recall, 3), "f1": round(m.f1, 3),
+        "precision": round(m.precision, 3),
+        "recall": round(m.recall, 3),
+        "f1": round(m.f1, 3),
         "false_positive_rate": round(m.false_positive_rate, 3),
-        "false_negative_rate": round(m.false_negative_rate, 3), "n": m.n,
+        "false_negative_rate": round(m.false_negative_rate, 3),
+        "n": m.n,
     }
 
 
 def _write_plot(all_results, path):
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    models = ["model1_fixed_threshold", "model2_personal_statistics", "model3_personal_plus_gru"]
-    labels = ["Fixed threshold\n(Model 1)", "Personal statistics\n(Model 2)", "Personal + GRU\n(Model 3)"]
+    models = [
+        "model1_fixed_threshold",
+        "model2_personal_statistics",
+        "model3_personal_plus_gru",
+    ]
+    labels = [
+        "Fixed threshold\n(Model 1)",
+        "Personal statistics\n(Model 2)",
+        "Personal + GRU\n(Model 3)",
+    ]
     pathways = ["fatigue", "distraction"]
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
@@ -310,18 +381,28 @@ def _write_plot(all_results, path):
         fpr_by_model = []
         for model in models:
             f1s = [all_results[p][model][pathway]["f1"] for p in all_results]
-            fprs = [all_results[p][model][pathway]["false_positive_rate"] for p in all_results]
+            fprs = [
+                all_results[p][model][pathway]["false_positive_rate"]
+                for p in all_results
+            ]
             f1_by_model.append(np.mean(f1s))
             fpr_by_model.append(np.mean(fprs))
         x = np.arange(len(models))
         ax.bar(x - 0.18, f1_by_model, width=0.36, label="F1 (higher better)")
-        ax.bar(x + 0.18, fpr_by_model, width=0.36, label="False-positive rate (lower better)")
+        ax.bar(
+            x + 0.18,
+            fpr_by_model,
+            width=0.36,
+            label="False-positive rate (lower better)",
+        )
         ax.set_xticks(x)
         ax.set_xticklabels(labels, fontsize=8)
         ax.set_title(f"{pathway.capitalize()} pathway (mean over 4 synthetic pilots)")
         ax.set_ylim(0, 1)
         ax.legend(fontsize=8)
-    fig.suptitle("SYNTHETIC DATA -- pipeline demonstration only, not a real-world accuracy claim")
+    fig.suptitle(
+        "SYNTHETIC DATA -- pipeline demonstration only, not a real-world accuracy claim"
+    )
     fig.tight_layout()
     fig.savefig(path, dpi=130)
     plt.close(fig)
@@ -412,7 +493,9 @@ def _write_report(all_results, any_gru_ran, path):
         lines.append(f"\n### {pilot_id}")
         lines.append(result["note"])
         lines.append("")
-        lines.append("| Model | Fatigue F1 | Fatigue FPR | Distraction F1 | Distraction FPR |")
+        lines.append(
+            "| Model | Fatigue F1 | Fatigue FPR | Distraction F1 | Distraction FPR |"
+        )
         lines.append("| --- | --- | --- | --- | --- |")
         for model_key, model_label in (
             ("model1_fixed_threshold", "Model 1: fixed threshold"),

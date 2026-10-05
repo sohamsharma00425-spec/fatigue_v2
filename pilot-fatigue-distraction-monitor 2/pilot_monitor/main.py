@@ -60,10 +60,16 @@ def _load_profile_and_model(args):
                 if meta_json.is_file():
                     gru_bundle = load_pilot_model(args.pilot_id, args.profiles_dir)
                 else:
-                    print(f"No trained GRU model found for pilot '{args.pilot_id}'; continuing without it.")
+                    print(
+                        f"No trained GRU model found for pilot '{args.pilot_id}'; continuing without it."
+                    )
             else:
-                print("PyTorch not installed: continuing without the GRU anomaly model.")
-        except Exception as error:  # pragma: no cover - defensive, environment-dependent
+                print(
+                    "PyTorch not installed: continuing without the GRU anomaly model."
+                )
+        except (
+            Exception
+        ) as error:  # pragma: no cover - defensive, environment-dependent
             print(f"Could not load GRU model ({error}); continuing without it.")
 
     return profile, gru_bundle
@@ -95,7 +101,9 @@ def main(argv=None):
         pprint.pp(vars(args), indent=4)
 
     profile, gru_bundle = _load_profile_and_model(args)
-    pipeline = MonitoringPipeline(profile=profile, gru_bundle=gru_bundle) if profile else None
+    pipeline = (
+        MonitoringPipeline(profile=profile, gru_bundle=gru_bundle) if profile else None
+    )
     logger = ResearchLogger() if args.log_path else None
 
     video_source = str(args.video) if args.video else args.camera
@@ -121,7 +129,9 @@ def main(argv=None):
                 show_axis=args.show_axis,
             )
             if pipeline is not None:
-                pipeline.feature_extractor.head_pose = HeadPoseEstimator(**head_pose_kwargs)
+                pipeline.feature_extractor.head_pose = HeadPoseEstimator(
+                    **head_pose_kwargs
+                )
 
             now = time.perf_counter()
             previous_frame_time = now
@@ -169,11 +179,19 @@ def main(argv=None):
                         gru_anomaly,
                     ) = pipeline.process_frame(frame, result, frame_size, frame_time)
 
-                    ear, roll, pitch, yaw = features.ear, features.roll, features.pitch, features.yaw
+                    ear, roll, pitch, yaw = (
+                        features.ear,
+                        features.roll,
+                        features.pitch,
+                        features.yaw,
+                    )
                     if features.gaze_dx is not None:
                         gaze_mag = (features.gaze_dx**2 + features.gaze_dy**2) ** 0.5
 
-                    for name, update in (("fatigue", fatigue_update), ("distraction", distraction_update)):
+                    for name, update in (
+                        ("fatigue", fatigue_update),
+                        ("distraction", distraction_update),
+                    ):
                         text = explain(name, update)
                         if text:
                             alerts.append(f"{name.upper()}: {update.state.value}")
@@ -220,7 +238,9 @@ def main(argv=None):
                         landmarks = get_landmarks(result.face_landmarks)
                         eye_detector = EyeDetector()
                         ear = eye_detector.get_EAR(landmarks, frame_size)
-                        gaze_mag = eye_detector.get_Gaze_Score(frame, landmarks, frame_size)
+                        gaze_mag = eye_detector.get_Gaze_Score(
+                            frame, landmarks, frame_size
+                        )
 
                 processing_ms = (
                     (cv2.getTickCount() - processing_start) / cv2.getTickFrequency()

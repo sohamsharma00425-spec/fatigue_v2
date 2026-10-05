@@ -4,7 +4,15 @@ from pilot_monitor.events import EventEngine, EventType, WindowedEventStats
 
 
 def zs(ear=0.0, dx=0.0, dy=0.0, roll=0.0, pitch=0.0, yaw=0.0, mar=0.0):
-    return {"ear": ear, "gaze_dx": dx, "gaze_dy": dy, "roll": roll, "pitch": pitch, "yaw": yaw, "mar": mar}
+    return {
+        "ear": ear,
+        "gaze_dx": dx,
+        "gaze_dy": dy,
+        "roll": roll,
+        "pitch": pitch,
+        "yaw": yaw,
+        "mar": mar,
+    }
 
 
 def test_short_closure_is_classified_as_blink():
@@ -43,8 +51,12 @@ def test_head_axes_tracked_independently():
     engine = EventEngine(head_z_thresh=1.0)
     # Large roll only; pitch/yaw stay normal.
     for t in (0.0, 0.5):
-        events = engine.update(t, zs(roll=3.0, pitch=0.0, yaw=0.0), quality_is_invalid=False)
-    events = engine.update(1.0, zs(roll=0.0, pitch=0.0, yaw=0.0), quality_is_invalid=False)
+        events = engine.update(
+            t, zs(roll=3.0, pitch=0.0, yaw=0.0), quality_is_invalid=False
+        )
+    events = engine.update(
+        1.0, zs(roll=0.0, pitch=0.0, yaw=0.0), quality_is_invalid=False
+    )
 
     assert len(events) == 1
     assert events[0].event_type == EventType.HEAD_DEVIATION_ROLL
@@ -64,7 +76,9 @@ def test_ongoing_closure_counts_toward_risk_before_it_ends():
 
     window = stats.compute(10.0, engine.active_snapshots(10.0))
     assert EventType.PROLONGED_CLOSURE in window
-    assert window[EventType.PROLONGED_CLOSURE]["active_fraction"] == pytest.approx(10.0 / 60.0)
+    assert window[EventType.PROLONGED_CLOSURE]["active_fraction"] == pytest.approx(
+        10.0 / 60.0
+    )
 
 
 def test_windowed_stats_expire_old_events():

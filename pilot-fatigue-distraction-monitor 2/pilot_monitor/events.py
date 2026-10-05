@@ -177,7 +177,10 @@ class EventEngine:
             if duration is None:
                 continue
             event_type = tracker.event_type
-            if event_type == EventType.PROLONGED_CLOSURE and duration <= self.blink_max_duration:
+            if (
+                event_type == EventType.PROLONGED_CLOSURE
+                and duration <= self.blink_max_duration
+            ):
                 event_type = EventType.BLINK
             snapshots[event_type] = duration
         return snapshots

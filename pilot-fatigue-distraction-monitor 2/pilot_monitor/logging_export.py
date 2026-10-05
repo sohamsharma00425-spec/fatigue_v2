@@ -63,7 +63,11 @@ class ResearchLogger:
             writer.writeheader()
             for row in self._rows:
                 data = asdict(row)
-                for key in ("quality_reasons", "fatigue_reasons", "distraction_reasons"):
+                for key in (
+                    "quality_reasons",
+                    "fatigue_reasons",
+                    "distraction_reasons",
+                ):
                     data[key] = ";".join(data[key])
                 writer.writerow(data)
 

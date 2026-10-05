@@ -26,8 +26,26 @@ dev = [
     "pytest>=9.0,<10",
 ]
 
+[tool.pytest.ini_options]
+tmp_path_retention_policy = "none"
+cache_dir = ".pytest_tmp/cache"
+
 [tool.isort]
 profile = "black"
+skip = [
+    ".matplotlib-cache",
+    ".pytest_cache",
+    ".pytest_tmp",
+    ".uv-cache",
+    ".venv",
+    "dist",
+]
+
+[tool.hatch.build]
+exclude = [".uv-cache", ".matplotlib-cache", "dist"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["pilot_monitor", "evaluation"]
 
 [build-system]
 requires = ["hatchling"]

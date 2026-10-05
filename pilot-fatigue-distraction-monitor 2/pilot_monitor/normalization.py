@@ -33,7 +33,6 @@ def normalize(profile, features):
         ``None`` rather than raising).
     """
     zscores = {
-        name: profile.robust_zscore(name, features.get(name))
-        for name in FEATURE_NAMES
+        name: profile.robust_zscore(name, features.get(name)) for name in FEATURE_NAMES
     }
     return NormalizedObservation(raw=dict(features), zscores=zscores)

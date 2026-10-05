@@ -105,7 +105,9 @@ class PathwayStateMachine:
             self.state = AlertState.DATA_INVALID
             self._pending_state = None
             self._pending_since = None
-            return AlertUpdate(self.state, risk, [], changed=self.state != previous_state)
+            return AlertUpdate(
+                self.state, risk, [], changed=self.state != previous_state
+            )
 
         if self.state == AlertState.DATA_INVALID:
             # Observation quality recovered: resume from where we left off
@@ -189,7 +191,10 @@ class AlertStateMachine:
 
     def update(self, t_now, risk_result, quality_is_invalid):
         fatigue_update = self.fatigue.update(
-            t_now, risk_result.fatigue_risk, risk_result.fatigue_reasons, quality_is_invalid
+            t_now,
+            risk_result.fatigue_risk,
+            risk_result.fatigue_reasons,
+            quality_is_invalid,
         )
         distraction_update = self.distraction.update(
             t_now,

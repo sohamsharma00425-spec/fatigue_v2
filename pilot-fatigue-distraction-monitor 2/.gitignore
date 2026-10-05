@@ -4,6 +4,7 @@ camera_calibration/calib_photos/*
 models/
 profiles/
 evaluation/results/gru_models/
+.matplotlib-cache/
 #GITIGNORE TEMPLATE COPIED FROM GITHUB GITIGNORE REPO + INTELLIJ GITIGNORE REPO
 
 # Byte-compiled / optimized / DLL files
@@ -57,6 +58,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.pytest_tmp/
 cover/
 
 # Translations

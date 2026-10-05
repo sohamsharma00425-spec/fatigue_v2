@@ -9,7 +9,11 @@ from pilot_monitor.alerts import AlertState
 def explain(pathway_name, update):
     """Return a short, human-readable explanation string, or ``None`` if the
     pathway is not currently in an alerting state worth explaining."""
-    if update.state in (AlertState.NORMAL, AlertState.MONITORING, AlertState.DATA_INVALID):
+    if update.state in (
+        AlertState.NORMAL,
+        AlertState.MONITORING,
+        AlertState.DATA_INVALID,
+    ):
         return None
 
     header = {
